@@ -5,7 +5,7 @@ import io.cucumber.testng.CucumberOptions;
 
 @CucumberOptions(
         features = "src/test/resources/features",
-        glue = {"com.restfulbooker.stepdefs", "com.restfulbooker.hooks"},
+        glue = {"com.restfulbooker.stepdefs", "com.restfulbooker.hooks", "com.restfulbooker.parameters"},
         plugin = {
                 "pretty",
                 "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm",
