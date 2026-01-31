@@ -1,12 +1,18 @@
 package com.restfulbooker.stepdefs;
 
+import com.restfulbooker.client.RestClient;
 import com.restfulbooker.context.ScenarioContext;
 import com.restfulbooker.hooks.TestHooks;
 import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
 import io.restassured.response.Response;
 import org.testng.Assert;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.UUID;
 
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
@@ -15,6 +21,38 @@ import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInC
  * Generic step definitions reusable across all endpoints.
  */
 public class CommonSteps {
+
+    private static final String PAYLOADS_PREFIX = "payloads/";
+
+    private static final Set<String> VALID_HTTP_METHODS = Set.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS");
+
+    private final RestClient restClient = new RestClient();
+
+    // ========== Request Steps (METHOD and path in one string) ==========
+
+    @When("I send {string} request")
+    public void iSendRequest(String methodAndPath) {
+        Object body = getContext().getContext(ScenarioContext.REQUEST_BODY);
+        sendRequest(methodAndPath, body);
+    }
+
+    @When("I send {string} request with the following payload:")
+    public void iSendRequestWithPayload(String methodAndPath, String payload) {
+        sendRequest(methodAndPath, payload);
+    }
+
+    @When("I send {string} request with payload from file {string}")
+    public void iSendRequestWithPayloadFromFile(String methodAndPath, String filePath) {
+        String payload = readClasspathResource(PAYLOADS_PREFIX + filePath);
+        sendRequest(methodAndPath, payload);
+    }
+
+    private void sendRequest(String methodAndPath, Object body) {
+        MethodAndPath parsed = parseMethodAndPath(methodAndPath);
+        Response response = restClient.send(parsed.method(), parsed.path(), body);
+        getContext().setResponse(response);
+    }
 
     // ========== HTTP Response Assertions ==========
 
@@ -142,6 +180,40 @@ public class CommonSteps {
     }
 
     // ========== Private Helper Methods ==========
+
+    private static record MethodAndPath(String method, String path) {}
+
+    /**
+     * Parses "METHOD /path" string. Requires both method and path (space-separated).
+     * Validates HTTP method and that path starts with /.
+     */
+    private MethodAndPath parseMethodAndPath(String methodAndPath) {
+        Assert.assertNotNull(methodAndPath, "Method and path string must not be null");
+        int firstSpace = methodAndPath.indexOf(' ');
+        Assert.assertTrue(firstSpace > 0,
+                "Method and path must be specified as 'METHOD /path', e.g. 'POST /auth'. Got: " + methodAndPath);
+        String method = methodAndPath.substring(0, firstSpace).trim().toUpperCase();
+        String path = methodAndPath.substring(firstSpace + 1).trim();
+        Assert.assertFalse(path.isEmpty(), "Path must not be empty. Got: " + methodAndPath);
+        Assert.assertTrue(VALID_HTTP_METHODS.contains(method),
+                "Invalid HTTP method: '" + method + "'. Expected one of: " + String.join(", ", VALID_HTTP_METHODS));
+        Assert.assertTrue(path.startsWith("/"),
+                "Path must start with '/'. Got: '" + path + "'");
+        return new MethodAndPath(method, path);
+    }
+
+    private String readClasspathResource(String resourcePath) {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        try (InputStream in = loader.getResourceAsStream(resourcePath)) {
+            Assert.assertNotNull(in, "Resource not found on classpath: " + resourcePath);
+            try (Scanner s = new Scanner(in, StandardCharsets.UTF_8).useDelimiter("\\A")) {
+                return s.hasNext() ? s.next() : "";
+            }
+        } catch (Exception e) {
+            Assert.fail("Failed to read classpath resource '" + resourcePath + "': " + e.getMessage());
+            throw new AssertionError("unreachable");
+        }
+    }
 
     private Response getResponse() {
         Response response = getContext().getResponse();

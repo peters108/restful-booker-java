@@ -32,3 +32,6 @@ Thumbs.db
 # Allure
 allure-results/
 allure-report/
+
+# Local project notes and working docs (not for version control)
+.local/

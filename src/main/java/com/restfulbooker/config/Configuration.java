@@ -19,4 +19,10 @@ public interface Configuration extends Config {
 
     @Key("api.health.context")
     String apiHealthContext();
+
+    @Key("auth.username")
+    String authUsername();
+
+    @Key("auth.password")
+    String authPassword();
 }

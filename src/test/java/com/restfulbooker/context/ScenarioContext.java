@@ -10,7 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ScenarioContext {
 
+    /** Key for the last API response (used by common steps). */
     private static final String RESPONSE_KEY = "RESPONSE";
+
+    /** Request body for the next "I send … request" step (e.g. auth payload, booking payload). */
+    public static final String REQUEST_BODY = "REQUEST_BODY";
 
     private final ConcurrentHashMap<String, Object> context = new ConcurrentHashMap<>();
 
