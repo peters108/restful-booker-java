@@ -1,15 +1,15 @@
 package com.restfulbooker.client;
 
 import com.restfulbooker.model.request.AuthRequest;
-import com.restfulbooker.specs.RequestSpecBuilder;
 import io.restassured.response.Response;
-
-import static io.restassured.RestAssured.given;
 
 /**
  * Encapsulates all Auth-related API calls.
+ * Uses {@link RestClient} for the actual request.
  */
 public final class AuthClient {
+
+    private final RestClient restClient = new RestClient();
 
     /**
      * Requests an auth token with the given credentials.
@@ -19,13 +19,6 @@ public final class AuthClient {
      * @return the raw response for status and body assertions
      */
     public Response createToken(AuthRequest authRequest) {
-        return given()
-                .spec(RequestSpecBuilder.build())
-                .body(authRequest)
-                .when()
-                .post("/auth")
-                .then()
-                .extract()
-                .response();
+        return restClient.send("POST", "/auth", authRequest);
     }
 }
