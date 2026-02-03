@@ -25,19 +25,17 @@ Feature: Booking API - CreateBooking, GetBookingIds, GetBooking
       """
     Then the response HTTP code is 500
 
-  Scenario: Create booking without firstname fails
+  Scenario Outline: Create booking without required field fails
     Given I have API endpoint: "POST /booking"
     And I have request payload from file: "post_booking.json"
-    And I remove JSONpath "firstname" from payload
+    And I remove JSONpath "<field>" from payload
     When I call the API
     Then the response HTTP code is 500
 
-  Scenario: Create booking without bookingdates fails
-    Given I have API endpoint: "POST /booking"
-    And I have request payload from file: "post_booking.json"
-    And I remove JSONpath "bookingdates" from payload
-    When I call the API
-    Then the response HTTP code is 500
+    Examples:
+      | field        |
+      | firstname    |
+      | bookingdates |
 
   # ========== GetBookingIds - Positive ==========
 
