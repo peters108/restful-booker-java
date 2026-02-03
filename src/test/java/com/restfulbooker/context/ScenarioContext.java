@@ -16,6 +16,9 @@ public class ScenarioContext {
     /** Request body for the next "I send … request" step (e.g. auth payload, booking payload). */
     public static final String REQUEST_BODY = "REQUEST_BODY";
 
+    /** Request headers for the next API call (e.g., Cookie header for auth). */
+    public static final String REQUEST_HEADERS = "REQUEST_HEADERS";
+
     private final ConcurrentHashMap<String, Object> context = new ConcurrentHashMap<>();
 
     public void setContext(String key, Object value) {

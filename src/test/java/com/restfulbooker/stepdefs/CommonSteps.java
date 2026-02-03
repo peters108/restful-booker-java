@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.restfulbooker.client.RestClient;
+import com.restfulbooker.config.ConfigurationManager;
 import com.restfulbooker.context.ScenarioContext;
 import com.restfulbooker.hooks.TestHooks;
+import com.restfulbooker.model.request.AuthRequest;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -13,8 +15,10 @@ import io.restassured.response.Response;
 import org.testng.Assert;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +39,18 @@ public class CommonSteps {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final RestClient restClient = new RestClient();
+
+    @Given("I am authenticated")
+    public void iAmAuthenticated() {
+        var config = ConfigurationManager.getConfiguration();
+        AuthRequest authRequest = new AuthRequest(config.authUsername(), config.authPassword());
+        Response authResponse = restClient.send("POST", "/auth", authRequest);
+        String token = authResponse.jsonPath().getString("token");
+        Assert.assertNotNull(token, "Failed to obtain auth token");
+
+        Map<String, String> headers = Map.of("Cookie", "token=" + token);
+        getContext().setContext(ScenarioContext.REQUEST_HEADERS, headers);
+    }
 
     // ========== Request Steps (METHOD and path in one string) ==========
 
@@ -93,7 +109,9 @@ public class CommonSteps {
 
     private void sendRequest(String methodAndPath, Object body) {
         MethodAndPath parsed = parseMethodAndPath(resolveVariablesInPath(methodAndPath));
-        Response response = restClient.send(parsed.method(), parsed.path(), body);
+        @SuppressWarnings("unchecked")
+        Map<String, String> headers = (Map<String, String>) getContext().getContext(ScenarioContext.REQUEST_HEADERS);
+        Response response = restClient.send(parsed.method(), parsed.path(), body, headers);
         getContext().setResponse(response);
     }
 
@@ -178,8 +196,15 @@ public class CommonSteps {
         Assert.assertNotNull(actualValue, "Response body has no value at JSONpath '" + jsonPath + "'");
 
         expectedValue = resolveVariables(expectedValue);
-        Object convertedExpected = convertToActualType(actualValue, expectedValue);
+        if (actualValue instanceof Number && isNumeric(expectedValue)) {
+            BigDecimal actualNumber = new BigDecimal(actualValue.toString());
+            BigDecimal expectedNumber = new BigDecimal(expectedValue);
+            Assert.assertEquals(actualNumber.compareTo(expectedNumber), 0,
+                    "JSONpath '" + jsonPath + "' value did not match");
+            return;
+        }
 
+        Object convertedExpected = convertToActualType(actualValue, expectedValue);
         Assert.assertEquals(actualValue, convertedExpected,
                 "JSONpath '" + jsonPath + "' value did not match");
     }
